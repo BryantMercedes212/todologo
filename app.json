@@ -14,7 +14,15 @@
           "locationAlwaysAndWhenInUsePermission": "Necesitamos tu ubicación para mostrarte técnicos cercanos."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ]
     ],
     "android": {
       "package": "com.tuapp.taskapp",

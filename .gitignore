@@ -21,3 +21,5 @@ yarn-error.*
 # Functions
 functions/node_modules/
 functions/lib/
+ios/
+android/
