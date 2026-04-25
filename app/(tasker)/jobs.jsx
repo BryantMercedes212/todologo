@@ -8,7 +8,6 @@ import EmptyState from '../../components/shared/EmptyState';
 import { formatCurrency, formatDateShort } from '../../utils/format';
 import { colors } from '../../constants/colors';
 
-// TODO: the subscribeTaskerBookings now returns 'cancelled' — wire it in.
 const TABS = [
   { id: 'confirmed', label: 'Confirmados' },
   { id: 'completed', label: 'Completados' },
@@ -17,13 +16,14 @@ const TABS = [
 
 export default function JobsScreen() {
   const [tab, setTab] = useState('confirmed');
-  const { confirmed, completed, startJob, completeJob } = useTaskerBookings();
+  const { confirmed, completed, cancelled, startJob, completeJob } = useTaskerBookings();
 
   const data = useMemo(() => {
     if (tab === 'confirmed') return confirmed;
     if (tab === 'completed') return completed;
-    return []; // cancelled not yet tracked in hook — TODO
-  }, [tab, confirmed, completed]);
+    if (tab === 'cancelled') return cancelled;
+    return [];
+  }, [tab, confirmed, completed, cancelled]);
 
   return (
     <View style={s.container}>
@@ -45,7 +45,20 @@ export default function JobsScreen() {
             ? <ConfirmedJobCard booking={item} onStart={startJob} onComplete={completeJob} />
             : <HistoryCard booking={item} />
         }
-        ListEmptyComponent={<EmptyState title="Sin trabajos aquí" />}
+        ListEmptyComponent={
+          <EmptyState
+            title={
+              tab === 'confirmed' ? 'Sin trabajos confirmados'
+              : tab === 'completed' ? 'Sin trabajos completados'
+              : 'Sin trabajos cancelados'
+            }
+            sub={
+              tab === 'confirmed' ? 'Los trabajos que aceptes aparecerán aquí.'
+              : tab === 'completed' ? 'Cuando completes un trabajo se moverá aquí.'
+              : 'Los trabajos cancelados aparecerán aquí.'
+            }
+          />
+        }
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
       />
     </View>

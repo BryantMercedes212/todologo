@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Switch, ActivityIndicator } from 'react-native';
 import * as Location from 'expo-location';
 import { useAuth } from '../../hooks/useAuth';
 import { useAsync } from '../../hooks/useAsync';
-import { getTaskerProfile, updateTaskerProfile, updateTaskerAvailability } from '../../services/taskers.service';
+import { getTaskerProfile, updateTaskerProfile, updateTaskerAvailability, updateTaskerCoords } from '../../services/taskers.service';
 import { logOut } from '../../firebase/auth';
 import { CATEGORIES } from '../../constants/data';
 import { colors } from '../../constants/colors';
+
+const STALE_AFTER_DAYS = 14;
+const MS_PER_DAY       = 24 * 60 * 60 * 1000;
 
 // Basic editor for the three fields that matter most: name, hourly rate,
 // and categories. Availability toggle + logout at the bottom.
@@ -15,12 +18,13 @@ export default function TaskerProfileScreen() {
   const { user }         = useAuth();
   const { loading, run } = useAsync();
 
-  const [displayName, setDisplayName] = useState('');
-  const [hourlyRate,  setHourlyRate]  = useState('');
-  const [categories,  setCategories]  = useState([]);
-  const [available,   setAvailable]   = useState(false);
-  const [coords,      setCoords]      = useState(null);
-  const [locLoading,  setLocLoading]  = useState(false);
+  const [displayName,      setDisplayName]      = useState('');
+  const [hourlyRate,       setHourlyRate]       = useState('');
+  const [categories,       setCategories]       = useState([]);
+  const [available,        setAvailable]        = useState(false);
+  const [coords,           setCoords]           = useState(null);
+  const [coordsUpdatedAt,  setCoordsUpdatedAt]  = useState(null);
+  const [locLoading,       setLocLoading]       = useState(false);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -31,8 +35,18 @@ export default function TaskerProfileScreen() {
       setCategories(p.categories ?? []);
       setAvailable(!!p.isAvailableNow);
       setCoords(p.location?.coords ?? null);
+      const ts = p.location?.coordsUpdatedAt;
+      setCoordsUpdatedAt(ts?.toDate ? ts.toDate() : (ts ? new Date(ts) : null));
     })();
   }, [user?.uid]);
+
+  // Stale = pinned more than 14 days ago. If we have coords but no timestamp,
+  // we treat it as stale so legacy taskers also get nudged once.
+  const isLocationStale = useMemo(() => {
+    if (!coords) return false;
+    if (!coordsUpdatedAt) return true;
+    return (Date.now() - coordsUpdatedAt.getTime()) > STALE_AFTER_DAYS * MS_PER_DAY;
+  }, [coords, coordsUpdatedAt]);
 
   const captureLocation = async () => {
     setLocLoading(true);
@@ -42,7 +56,8 @@ export default function TaskerProfileScreen() {
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       const next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       setCoords(next);
-      await updateTaskerProfile(user.uid, { 'location.coords': next });
+      setCoordsUpdatedAt(new Date());
+      await updateTaskerCoords(user.uid, next);
       Alert.alert('Listo', 'Ubicación actualizada');
     } catch (err) {
       Alert.alert('Error', 'No se pudo obtener tu ubicación');
@@ -85,6 +100,15 @@ export default function TaskerProfileScreen() {
         </View>
         <Switch value={available} onValueChange={handleAvailability} trackColor={{ false: colors.border, true: colors.primary }} />
       </View>
+
+      {isLocationStale && (
+        <View style={s.staleBanner}>
+          <Text style={s.staleTitle}>Ubicación desactualizada</Text>
+          <Text style={s.staleSub}>
+            Hace más de {STALE_AFTER_DAYS} días que no actualizas tu ubicación. Refréscala para que los clientes cerca puedan encontrarte.
+          </Text>
+        </View>
+      )}
 
       <View style={s.availRow}>
         <View style={{ flex: 1 }}>
@@ -144,4 +168,7 @@ const s = StyleSheet.create({
   logoutText:   { color: colors.danger, fontWeight: '600', fontSize: 14 },
   locBtn:       { backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, minWidth: 90, alignItems: 'center' },
   locBtnText:   { color: '#fff', fontWeight: '600', fontSize: 13 },
+  staleBanner:  { backgroundColor: '#FFF6E5', borderWidth: 1, borderColor: colors.accent, borderRadius: 12, padding: 12, marginBottom: 12 },
+  staleTitle:   { fontSize: 13, fontWeight: '700', color: colors.accent, marginBottom: 4 },
+  staleSub:     { fontSize: 12, color: colors.text, lineHeight: 16 },
 });

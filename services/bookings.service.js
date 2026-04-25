@@ -27,15 +27,16 @@ export const getBusySlots = async (taskerId, date) => {
 export const createBooking = async (bookingData) => {
   try {
     const result = await createBookingFn({
-      clientId:       bookingData.clientId,
-      taskerId:       bookingData.taskerId,
-      scheduledAt:    bookingData.scheduledAt,
-      scheduledDate:  bookingData.scheduledDate,
-      scheduledSlot:  bookingData.scheduledSlot,
-      estimatedHours: bookingData.estimatedHours,
-      paymentMethod:  bookingData.paymentMethod,
-      serviceNotes:   bookingData.serviceNotes ?? '',
-      address:        bookingData.address,
+      clientId:        bookingData.clientId,
+      taskerId:        bookingData.taskerId,
+      idempotencyKey:  bookingData.idempotencyKey,
+      scheduledAt:     bookingData.scheduledAt,
+      scheduledDate:   bookingData.scheduledDate,
+      scheduledSlot:   bookingData.scheduledSlot,
+      estimatedHours:  bookingData.estimatedHours,
+      paymentMethod:   bookingData.paymentMethod,
+      serviceNotes:    bookingData.serviceNotes ?? '',
+      address:         bookingData.address,
     });
     return { success: true, bookingId: result.data.bookingId, pricing: result.data.pricing };
   } catch (error) {

@@ -60,7 +60,7 @@ export default function ClientHomeScreen() {
         ListHeaderComponent={(
           <View>
             <Text style={s.sectionTitle}>Categorías</Text>
-            <CategoryGrid onPress={(c) => setCategory(c.id === category ? null : c.id)} />
+            <CategoryGrid selectedId={category} onPress={(c) => setCategory(c.id === category ? null : c.id)} />
             <Text style={s.sectionTitle}>Técnicos cerca de ti</Text>
             {(loading || locLoading) && <ActivityIndicator style={{ marginVertical: 16 }} color={colors.primary} />}
           </View>

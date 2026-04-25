@@ -5,20 +5,25 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { subscribeTaskerBookings, acceptBooking, declineBooking, startJob, completeJob } from '../services/bookings.service';
 
 export const useTaskerBookings = () => {
-  const { user }                = useAuth();
+  const { user }                  = useAuth();
   const [pending,   setPending]   = useState([]);
   const [confirmed, setConfirmed] = useState([]);
   const [completed, setCompleted] = useState([]);
+  const [cancelled, setCancelled] = useState([]);
   const [loading,   setLoading]   = useState(true);
 
   useEffect(() => {
     if (!user?.uid) return;
-    return subscribeTaskerBookings(user.uid, ({ pending, confirmed, completed }) => {
-      setPending(pending); setConfirmed(confirmed); setCompleted(completed); setLoading(false);
+    return subscribeTaskerBookings(user.uid, ({ pending, confirmed, completed, cancelled }) => {
+      setPending(pending);
+      setConfirmed(confirmed);
+      setCompleted(completed);
+      setCancelled(cancelled);
+      setLoading(false);
     });
   }, [user?.uid]);
 
-  return { pending, confirmed, completed, loading, acceptBooking, declineBooking, startJob, completeJob };
+  return { pending, confirmed, completed, cancelled, loading, acceptBooking, declineBooking, startJob, completeJob };
 };
 
 export const useTaskerStats = () => {

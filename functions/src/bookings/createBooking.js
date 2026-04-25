@@ -9,10 +9,11 @@ const db = admin.firestore();
  * SECURITY: Client sends only raw inputs. Server:
  *   1. Fetches real hourlyRate from Firestore — never trusts client price
  *   2. Validates all inputs
- *   3. Rejects if the slot is already taken (slot-conflict check)
- *   4. Calculates pricing server-side
- *   5. Creates booking document
- *   6. Returns bookingId + pricing
+ *   3. Idempotency check: returns existing booking if same key was already used
+ *   4. Rejects if the slot is already taken (slot-conflict check)
+ *   5. Calculates pricing server-side
+ *   6. Creates booking document
+ *   7. Returns bookingId + pricing
  */
 exports.createBooking = onCall(async (request) => {
   const { auth, data } = request;
@@ -27,6 +28,23 @@ exports.createBooking = onCall(async (request) => {
   }
 
   try {
+    // Idempotency check: if the client sent a key we've already processed
+    // for this user, return the existing booking instead of creating a new
+    // one. This protects against double-taps, network retries, and any other
+    // duplicate-call scenario. Scoped to clientId so keys can't collide
+    // across users.
+    if (data.idempotencyKey) {
+      const existing = await db.collection('bookings')
+        .where('clientId',       '==', data.clientId)
+        .where('idempotencyKey', '==', data.idempotencyKey)
+        .limit(1)
+        .get();
+      if (!existing.empty) {
+        const doc = existing.docs[0];
+        return { success: true, bookingId: doc.id, pricing: doc.data().pricing, deduped: true };
+      }
+    }
+
     const taskerRef = db.collection('taskers').doc(data.taskerId);
     const taskerDoc = await taskerRef.get();
     validateBookingInput(data, taskerDoc);
@@ -52,13 +70,14 @@ exports.createBooking = onCall(async (request) => {
     const client    = clientDoc.exists ? clientDoc.data() : {};
 
     const booking = {
-      clientId:    data.clientId,
-      clientName:  client.name  ?? '',
-      clientPhone: client.phone ?? '',
-      taskerId:    data.taskerId,
-      taskerName:  tasker.displayName ?? '',
-      taskerPhone: tasker.phone ?? '',
-      status:      'pending',
+      clientId:       data.clientId,
+      clientName:     client.name  ?? '',
+      clientPhone:    client.phone ?? '',
+      taskerId:       data.taskerId,
+      taskerName:     tasker.displayName ?? '',
+      taskerPhone:    tasker.phone ?? '',
+      idempotencyKey: data.idempotencyKey ?? null,
+      status:         'pending',
       service: {
         category:       tasker.skills?.[0] ?? '',
         description:    data.serviceNotes  ?? '',

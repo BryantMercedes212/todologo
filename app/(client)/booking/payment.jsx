@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useBooking } from '../../../context/BookingContext';
@@ -10,16 +11,29 @@ import { PAYMENT_METHODS } from '../../../constants/data';
 import { ROUTES } from '../../../constants/routes';
 import { colors } from '../../../constants/colors';
 
+// RFC 4122 v4 UUID. Math.random is fine here — this is a dedup key, not a
+// security token. Collision odds within one user's tap window are vanishing.
+const uuidv4 = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+  const r = (Math.random() * 16) | 0;
+  return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+});
+
 export default function PaymentScreen() {
   const router                                            = useRouter();
   const { booking, updateBooking, pricing, resetBooking } = useBooking();
   const { user, userProfile }                             = useAuth();
   const { loading, run }                                  = useAsync();
 
+  // Mint once per screen mount. Every Confirmar tap reuses this key, so a
+  // double-tap (or retry after a network blip) lands on the same booking
+  // server-side instead of creating duplicates.
+  const idempotencyKey = useRef(uuidv4()).current;
+
   const handleConfirm = () => run(async () => {
     const result = await createBooking({
       clientId:       user.uid,
       taskerId:       booking.tasker.id,
+      idempotencyKey,
       scheduledAt:    new Date(`${booking.date}T${convertTo24h(booking.time)}`),
       scheduledDate:  booking.date,   // 'YYYY-MM-DD' — used for busy/conflict lookups
       scheduledSlot:  booking.time,   // '9:00 AM' — exact label users see

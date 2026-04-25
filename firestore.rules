@@ -41,10 +41,11 @@ service cloud.firestore {
                     && request.resource.data.taskerId    == resource.data.taskerId
                     && request.resource.data.pricing     == resource.data.pricing
                     && request.resource.data.scheduledAt   == resource.data.scheduledAt
-                    && request.resource.data.scheduledDate == resource.data.scheduledDate
-                    && request.resource.data.scheduledSlot == resource.data.scheduledSlot
-                    && request.resource.data.createdAt     == resource.data.createdAt
-                    && request.resource.data.payment       == resource.data.payment
+                    && request.resource.data.scheduledDate  == resource.data.scheduledDate
+                    && request.resource.data.scheduledSlot  == resource.data.scheduledSlot
+                    && request.resource.data.createdAt      == resource.data.createdAt
+                    && request.resource.data.payment        == resource.data.payment
+                    && request.resource.data.idempotencyKey == resource.data.idempotencyKey
                     // Role-specific field whitelist + status transition rules
                     && (
                       // ── TASKER: moves the booking through its lifecycle ──

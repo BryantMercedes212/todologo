@@ -1,5 +1,5 @@
 import { db } from '../firebase/config';
-import { collection, doc, getDoc, getDocs, query, where, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 // Haversine formula — distance in km between two GPS coordinates.
 export const getDistanceKm = (lat1, lng1, lat2, lng2) => {
@@ -49,3 +49,11 @@ export const updateTaskerAvailability = (userId, isAvailableNow) =>
 
 export const updateTaskerProfile = (userId, patch) =>
   updateDoc(doc(db, 'taskers', userId), patch);
+
+// Stamp coordsUpdatedAt every time we write coords so we can warn the tasker
+// when their pinned location goes stale (e.g. they moved across town).
+export const updateTaskerCoords = (userId, coords) =>
+  updateDoc(doc(db, 'taskers', userId), {
+    'location.coords':          coords,
+    'location.coordsUpdatedAt': serverTimestamp(),
+  });
