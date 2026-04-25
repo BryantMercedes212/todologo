@@ -1,0 +1,94 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── USERS ─────────────────────────────────────────────────────────
+    // Any signed-in user can read a profile (needed to render names/avatars).
+    // Only the owner can write their own doc.
+    match /users/{userId} {
+      allow read:  if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ── TASKERS ───────────────────────────────────────────────────────
+    match /taskers/{userId} {
+      allow read:  if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ── BOOKINGS ──────────────────────────────────────────────────────
+    // Read: only the two participants.
+    // Create: blocked — the createBooking Cloud Function is the only writer
+    //   (ensures server-side pricing, validation, and slot checks).
+    // Update: participants only, with field-level restrictions and valid
+    //   status transitions. Money fields (pricing, scheduledAt, ids) are
+    //   immutable once set.
+    // Delete: blocked.
+    match /bookings/{bookingId} {
+      allow read: if request.auth != null
+                  && (request.auth.uid == resource.data.clientId
+                      || request.auth.uid == resource.data.taskerId);
+
+      allow create: if false;
+      allow delete: if false;
+
+      allow update: if request.auth != null
+                    // Must be a participant
+                    && (request.auth.uid == resource.data.clientId
+                        || request.auth.uid == resource.data.taskerId)
+                    // Immutable fields — never allow client-side tampering
+                    && request.resource.data.clientId    == resource.data.clientId
+                    && request.resource.data.taskerId    == resource.data.taskerId
+                    && request.resource.data.pricing     == resource.data.pricing
+                    && request.resource.data.scheduledAt   == resource.data.scheduledAt
+                    && request.resource.data.scheduledDate == resource.data.scheduledDate
+                    && request.resource.data.scheduledSlot == resource.data.scheduledSlot
+                    && request.resource.data.createdAt     == resource.data.createdAt
+                    && request.resource.data.payment       == resource.data.payment
+                    // Role-specific field whitelist + status transition rules
+                    && (
+                      // ── TASKER: moves the booking through its lifecycle ──
+                      (request.auth.uid == resource.data.taskerId
+                       && request.resource.data.diff(resource.data).affectedKeys()
+                            .hasOnly(['status','startedAt','completedAt','cancelledAt','cancelReason','updatedAt'])
+                       && (
+                         (resource.data.status == 'pending'     && request.resource.data.status in ['confirmed','cancelled']) ||
+                         (resource.data.status == 'confirmed'   && request.resource.data.status in ['in_progress','cancelled']) ||
+                         (resource.data.status == 'in_progress' && request.resource.data.status == 'completed')
+                       )
+                      )
+                      ||
+                      // ── CLIENT: can only cancel a pending/confirmed booking ──
+                      (request.auth.uid == resource.data.clientId
+                       && request.resource.data.diff(resource.data).affectedKeys()
+                            .hasOnly(['status','cancelReason','cancelledAt','updatedAt'])
+                       && request.resource.data.status == 'cancelled'
+                       && resource.data.status in ['pending','confirmed']
+                      )
+                    );
+    }
+
+    // ── REVIEWS ───────────────────────────────────────────────────────
+    // Anyone signed in can read; only the authoring client can create.
+    // No edits or deletes — reviews are immutable.
+    match /reviews/{reviewId} {
+      allow read:           if request.auth != null;
+      allow create:         if request.auth != null
+                            && request.auth.uid == request.resource.data.clientId;
+      allow update, delete: if false;
+    }
+
+    // ── MESSAGES ──────────────────────────────────────────────────────
+    // Scoped to the two participants of the parent booking.
+    // Previously this was "any authed user can read/write any chat" — huge leak.
+    match /messages/{bookingId}/chats/{messageId} {
+      allow read, create: if request.auth != null
+                          && exists(/databases/$(database)/documents/bookings/$(bookingId))
+                          && (
+                            request.auth.uid == get(/databases/$(database)/documents/bookings/$(bookingId)).data.clientId
+                            || request.auth.uid == get(/databases/$(database)/documents/bookings/$(bookingId)).data.taskerId
+                          );
+      allow update, delete: if false;
+    }
+  }
+}

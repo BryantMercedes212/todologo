@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "TaskApp",
+    "slug": "taskapp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "taskapp",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Necesitamos tu ubicación para mostrarte técnicos cercanos."
+        }
+      ],
+      "expo-asset"
+    ],
+    "android": {
+      "package": "com.tuapp.taskapp",
+      "config": {
+        "googleMaps": {
+          "apiKey": "$EXPO_PUBLIC_GOOGLE_MAPS_KEY"
+        }
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.tuapp.taskapp",
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "$EXPO_PUBLIC_GOOGLE_MAPS_KEY"
+      }
+    },
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}

@@ -1,0 +1,15 @@
+export const ROUTES = {
+  LOGIN:            '/(auth)/login',
+  COMPLETE_PROFILE: '/(auth)/complete-profile',
+  CLIENT_HOME:      '/(client)/',
+  CLIENT_MAP:       '/(client)/map',
+  CLIENT_BOOKINGS:  '/(client)/bookings',
+  BOOKING_DATETIME: '/(client)/booking/datetime',
+  BOOKING_ADDRESS:  '/(client)/booking/address',
+  BOOKING_PAYMENT:  '/(client)/booking/payment',
+  BOOKING_CONFIRM:  '/(client)/booking/confirmation',
+  TASKER_HOME:      '/(tasker)/',
+  TASKER_JOBS:      '/(tasker)/jobs',
+  TASKER_EARNINGS:  '/(tasker)/earnings',
+  TASKER_PROFILE:   '/(tasker)/profile',
+};
