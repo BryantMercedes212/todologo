@@ -1,6 +1,6 @@
-# TaskApp
+# todologo
 
-TaskRabbit-style home services marketplace for the Dominican Republic. Clients book local technicians; taskers accept/decline; everything priced in RD$ with ITBIS 18% applied server-side.
+todologo is a side project: a home services marketplace for the Dominican Republic, similar to TaskRabbit. It is an early-stage project and not a launched product. Clients book local technicians; taskers accept/decline; everything priced in RD$ with ITBIS 18% applied server-side.
 
 Stack: Expo (React Native) + Firebase (Auth, Firestore, Functions, FCM).
 
@@ -26,7 +26,7 @@ npm install -g firebase-tools
 From the project root:
 
 ```bash
-cd TaskApp
+cd todologo
 npm install
 npx expo install --fix
 ```
@@ -119,6 +119,13 @@ firebase.json       Firebase CLI config (points rules + functions)
 
 ---
 
+## What's implemented
+
+- Phone sign-in with client and tasker roles.
+- A booking wizard for clients, and an accept, decline, start and complete flow for taskers.
+- Server-side pricing, an idempotency key so retries don't create duplicate bookings, and a slot-conflict check, all in the `createBooking` Cloud Function.
+- A Cancelados tab for taskers, and Firestore rules with a status state machine.
+
 ## Security model
 
 - API keys live in `.env` only (never committed); `firebase/config.js` throws if any required key is missing.
@@ -153,10 +160,7 @@ firebase emulators:start --only functions  # Run functions locally
 
 ## Known TODOs
 
-- **Slot-conflict check** in `createBooking` (three clients can book the same 2 pm slot).
-- **Idempotency key** so retries don't create duplicates.
 - **GeoFirestore** migration when tasker count > ~500 (current client-side haversine filter is fine until then).
-- **cancelados tab** in `(tasker)/jobs.jsx` (subscription now returns `cancelled`, the hook just doesn't plumb it through yet).
 - **Real WhatsApp delivery** via Twilio or similar — `Linking.openURL` is client-side only.
 - **Azul / CardNet payment SDK** once you have merchant docs.
 - **`expo-firebase-recaptcha` replacement** before production — package is archived.
